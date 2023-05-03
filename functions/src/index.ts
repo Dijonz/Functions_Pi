@@ -82,3 +82,27 @@ export const setUser = functions
     }
     return JSON.stringify(cResponse);
   });
+
+export const sendFcmEmergencia = functions.firestore
+  .document("emergencias/{emergenciasId}")
+  .onCreate(async (snapshot, context) => {
+    // Lógica para enviar a notificação aqui
+    const documentData = snapshot.data();
+    const userId = documentData.userId;
+
+    // Obtenha o token de registro do dispositivo do usuário
+    const userDoc = await admin.firestore().doc(`users/${userId}`).get();
+    const user = userDoc.data();
+    if (user) {
+      const fcmToken = user.fcmToken;
+      const payload = {
+        notification: {
+          title: "EMERGENCIA! ",
+          body: "Uma nova emergencia foi registrada!",
+        },
+        token: fcmToken,
+      };
+      await admin.messaging().sendToTopic("notifications", payload);
+      console.log("Notification sent: ", Response);
+    }
+  });

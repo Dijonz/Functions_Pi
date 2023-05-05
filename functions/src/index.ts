@@ -83,6 +83,7 @@ export const setUser = functions
     return JSON.stringify(cResponse);
   });
 
+
 export const sendFcmEmergencia = functions.firestore
   .document("emergencias/{emergenciasId}")
   .onCreate(async (snap, context) => {
@@ -91,6 +92,7 @@ export const sendFcmEmergencia = functions.firestore
 
     const userDoc = await admin.firestore().doc(`users/${userId}`).get();
     const user = userDoc.data();
+
     if (user) {
       const fcmToken = user.fcmToken;
       const message = {
@@ -104,3 +106,76 @@ export const sendFcmEmergencia = functions.firestore
       console.log("Notification sent: ", Response);
     }
   });
+
+export const enviarNotificacaos = functions.firestore
+  .document("emergencias/{emergenciaId}")
+  .onCreate(async (snapshot, context) => {
+    const emergencia = snapshot.data();
+
+    const usersSnapshot = await admin.firestore().collection("users").get();
+
+    const tokens: string[] = [];
+    usersSnapshot.forEach((userDoc) => {
+      const userData = userDoc.data();
+      if (userData.token) {
+        tokens.push(userData.token);
+      }
+    });
+
+    if (tokens.length > 0) {
+      const payload = {
+        notification: {
+          title: "Nova emergência",
+          body: `Uma nova emergência foi registrada em ${emergencia.local}`,
+        },
+      };
+
+      await admin.messaging().sendToDevice(tokens, payload);
+    }
+  });
+
+
+export const enviarNotificacao = functions.firestore
+  .document("emergencias/{emergenciaId}")
+  .onCreate(async (snapshot, context) => {
+    const emergencia = snapshot.data();
+
+    const usersSnapshot = await admin.firestore().collection("users").get();
+
+    const tokens: string[] = [];
+    usersSnapshot.forEach((userDoc) => {
+      const userData = userDoc.data();
+      if (userData.token) {
+        tokens.push(userData.token);
+      }
+    });
+
+    for (const token of tokens) {
+      const message = {
+        notification: {
+          title: "Nova emergência",
+          body: `Uma nova emergência foi registrada em ${emergencia.local}`,
+        },
+        token,
+      };
+      await admin.messaging().send(message);
+    }
+  });
+
+export const enviarNotificacao = functions.firestore
+  .document("emergencias/{emergenciaId}")
+  .onCreate(async (snapshot, context) => {
+    const emergencia = snapshot.data();
+
+    const usersSnapshot = await admin.firestore().collection("users").get();
+
+    const message = {
+      notification: {
+        title: "Nova emergência",
+        body: `Uma nova emergência foi registrada em ${emergencia.local}`,
+      },
+      token: 
+    };
+    await admin.messaging().send(message);
+  });
+

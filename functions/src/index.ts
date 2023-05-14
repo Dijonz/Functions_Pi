@@ -104,6 +104,7 @@ export const Notificao = functions.firestore
       };
       messages.push(message);
     });
+    console.log(messages);
 
     await admin.messaging().sendEach(messages);
   });

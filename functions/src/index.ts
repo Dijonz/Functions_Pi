@@ -1,5 +1,6 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import {Message} from "firebase-admin/lib/messaging/messaging-api";
 
 const firebase = admin.initializeApp();
 
@@ -84,98 +85,27 @@ export const setUser = functions
   });
 
 
-export const sendFcmEmergencia = functions.firestore
-  .document("emergencias/{emergenciasId}")
-  .onCreate(async (snap, context) => {
-    const documentData = snap.data();
-    const userId = documentData.userId;
+export const Notificao = functions.firestore
+  .document("emergencias/{emergenciaId}")
+  .onCreate(async (snapshot, context) => {
+    const usersSnapshot = await admin.firestore().collection("users").get();
+    const messages:Message[] = [];
 
-    const userDoc = await admin.firestore().doc(`users/${userId}`).get();
-    const user = userDoc.data();
+    usersSnapshot.forEach((userDoc) => {
+      const userData = userDoc.data();
+      const fcmToken = userData.token;
 
-    if (user) {
-      const fcmToken = user.fcmToken;
       const message = {
+        notification: {
+          title: "Nova emergencia",
+          body: "uma nova emergencia foi registrada",
+        },
         token: fcmToken,
-        notification: {
-          title: "EMERGENCIA! ",
-          body: "Uma nova emergencia foi registrada!",
-        },
       };
-      await admin.messaging().sendToTopic("notifications", message);
-      console.log("Notification sent: ", Response);
-    }
-  });
-
-export const enviarNotificacaos = functions.firestore
-  .document("emergencias/{emergenciaId}")
-  .onCreate(async (snapshot, context) => {
-    const emergencia = snapshot.data();
-
-    const usersSnapshot = await admin.firestore().collection("users").get();
-
-    const tokens: string[] = [];
-    usersSnapshot.forEach((userDoc) => {
-      const userData = userDoc.data();
-      if (userData.token) {
-        tokens.push(userData.token);
-      }
+      messages.push(message);
     });
 
-    if (tokens.length > 0) {
-      const payload = {
-        notification: {
-          title: "Nova emergência",
-          body: `Uma nova emergência foi registrada em ${emergencia.local}`,
-        },
-      };
-
-      await admin.messaging().sendToDevice(tokens, payload);
-    }
+    await admin.messaging().sendEach(messages);
   });
 
-
-export const enviarNotificacao = functions.firestore
-  .document("emergencias/{emergenciaId}")
-  .onCreate(async (snapshot, context) => {
-    const emergencia = snapshot.data();
-
-    const usersSnapshot = await admin.firestore().collection("users").get();
-
-    const tokens: string[] = [];
-    usersSnapshot.forEach((userDoc) => {
-      const userData = userDoc.data();
-      if (userData.token) {
-        tokens.push(userData.token);
-      }
-    });
-
-    for (const token of tokens) {
-      const message = {
-        notification: {
-          title: "Nova emergência",
-          body: `Uma nova emergência foi registrada em ${emergencia.local}`,
-        },
-        token,
-      };
-      await admin.messaging().send(message);
-    }
-  });
-
-export const enviarNotificacao = functions.firestore
-  .document("emergencias/{emergenciaId}")
-  .onCreate(async (snapshot, context) => {
-    const emergencia = snapshot.data();
-
-    const usersSnapshot = await admin.firestore().collection("users").get();
-
-    const message = {
-      notification: {
-        title: "Nova emergência",
-        body: `Uma nova emergência foi registrada em ${emergencia.local}`,
-      },
-      token: 
-    };
-    await admin.messaging().send(message);
-  });
 

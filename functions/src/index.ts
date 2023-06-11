@@ -10,7 +10,8 @@ type Usuario = {
   telefone: string,
   curriculo: string,
   endereco: string,
-  status: boolean
+  status: boolean,
+  uid: string,
 }
 
 type CustomResponse = {
@@ -33,7 +34,8 @@ function hasAccountData(data: Usuario) {
       data.telefone != undefined &&
       data.curriculo != undefined &&
       data.endereco != undefined &&
-      data.status != undefined) {
+      data.status != undefined &&
+      data.uid != undefined) {
     return true;
   } else {
     return false;
@@ -84,7 +86,6 @@ export const setUser = functions
     return JSON.stringify(cResponse);
   });
 
-
 export const Notificao = functions.firestore
   .document("emergencias/{emergenciaId}")
   .onCreate(async (snapshot, context) => {
@@ -93,20 +94,50 @@ export const Notificao = functions.firestore
 
     usersSnapshot.forEach((userDoc) => {
       const userData = userDoc.data();
-      const fcmToken = userData.token;
 
-      const message = {
-        notification: {
-          title: "Nova emergencia",
-          body: "uma nova emergencia foi registrada",
-        },
-        token: fcmToken,
-      };
-      messages.push(message);
+      if (userData.token) {
+        const message = {
+          notification: {
+            title: "Nova emergencia",
+            body: "uma nova emergencia foi registrada",
+          },
+          token: userData.token,
+        };
+        messages.push(message);
+      }
     });
-    console.log(messages);
-
     await admin.messaging().sendEach(messages);
   });
 
+export const notificaSocorrista = functions.firestore
+  .document("emergencias/{emergenciaId}")
+  .onUpdate(async (change) => {
+    const newValue = change.after.data().field("dentistas");
+    const previousValue = change.before.data().field("dentistas");
+    if (newValue?.field !== previousValue?.field) {
+      try {
+        const userDoc=await admin.firestore()
+          .collection("emergencias")
+          .doc(newValue?.userId)
+          .get();
+        const userToken = userDoc.data()?.token;
 
+        if (userToken) {
+          const message = {
+            notification: {
+              title: "Emegência aceita!",
+              body: "sua emergencia foi aceita por um profissional",
+            },
+            token: userToken,
+          };
+          await admin.messaging().send(message);
+          console.log("Notification sent successfully");
+        } else {
+          console.log("User token not found");
+        }
+      } catch (error) {
+        console.error("Error sending notification:", error);
+      }
+    }
+    return null;
+  });
